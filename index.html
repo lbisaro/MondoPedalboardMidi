@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helix Live Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #0d0f14;
+            --surface:   #161a23;
+            --surface2:  #1e2433;
+            --border:    #2a3147;
+            --accent:    #e8491e;
+            --accent2:   #f97316;
+            --blue:      #3b82f6;
+            --green:     #22c55e;
+            --yellow:    #eab308;
+            --text:      #e2e8f0;
+            --muted:     #64748b;
+            --radius:    12px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 40px;
+            gap: 20px;
+        }
+
+        header {
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .logo h1 { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; }
+        .logo h1 span { color: var(--accent2); }
+
+        #status-badge {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            font-size: 12px; font-weight: 600;
+            transition: border-color 0.3s;
+        }
+        #status-badge.connected  { border-color: var(--green); color: var(--green); }
+        #status-badge.disconnected { border-color: var(--muted); color: var(--muted); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+        #status-badge.disconnected .dot { animation: none; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        .state-panel {
+            width: 100%; max-width: 720px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px;
+        }
+        .state-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex; flex-direction: column; gap: 4px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .state-card.flash {
+            border-color: var(--accent2);
+            box-shadow: 0 0 16px rgba(249,115,22,0.2);
+        }
+        .state-card label { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+        .state-card .value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; line-height: 1; }
+        .state-card .sub { font-size: 13px; color: var(--accent2); font-weight: 600; min-height: 16px; }
+        .expr-bar-wrap { margin-top: 4px; background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; }
+        .expr-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue), var(--accent2)); border-radius: 4px; transition: width 0.1s ease; }
+
+        .section-title { width: 100%; max-width: 720px; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+
+        .grid { 
+            width: 100%; 
+            max-width: 720px; 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 12px; 
+        }
+        .ctrl-btn {
+            padding: 18px 12px;
+            border: 1px solid;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700; font-size: 13px;
+            transition: transform 0.1s, opacity 0.15s;
+            position: relative; overflow: hidden;
+        }
+        .ctrl-btn:active { transform: scale(0.95); opacity: 0.8; }
+        .ctrl-btn.active {
+            border-color: #ffffff !important;
+            background-color: #ffffff !important;
+            color: var(--bg) !important;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        .nav-col {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .nav-btn {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .nav-btn:active { background: var(--border); }
+
+        #log { width:100%; max-width:720px; height:120px; overflow-y:scroll; background:#070910; border:1px solid var(--border); border-radius:var(--radius); font-family:'JetBrains Mono',monospace; font-size:11px; padding:10px 14px; color:#94a3b8; }
+        .log-entry { padding:1px 0; }
+        .log-entry.rx { color:#67e8f9; }
+        .log-entry.tx { color:#86efac; }
+        .log-entry .ts { color:var(--muted); margin-right:6px; }
+
+        /* Panel de edición mejorado */
+        .editor-panel {
+            width: 100%; max-width: 720px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 600px) { .editor-grid { grid-template-columns: 1fr; } }
+        
+        .editor-group { display: flex; flex-direction: column; gap: 8px; }
+        .editor-group label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+        
+        textarea {
+            width: 100%; height: 200px;
+            background: #070910; color: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+            outline: none; transition: border-color 0.2s;
+        }
+        textarea:focus { border-color: var(--accent2); }
+        .btn-row { display: flex; gap: 12px; margin-top: 10px; }
+        .action-btn {
+            flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; transition: opacity 0.2s;
+        }
+        .action-btn:hover { opacity: 0.9; }
+        #toggle-editor { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; cursor: pointer; font-size: 12px; padding: 8px 16px; border-radius: 6px; }
+
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">
+            <h1>Helix <span>Live</span></h1>
+        </div>
+        <div id="status-badge" class="disconnected">
+            <span class="dot"></span>
+            <span id="status-text">Buscando Helix...</span>
+        </div>
+    </header>
+
+    <div class="state-panel">
+        <div class="state-card" id="card-preset" style="flex: 2;">
+            <label>Preset Activo</label>
+            <div class="value" id="val-preset">&#8212;</div>
+            <div class="sub" id="sub-preset">Sin Nombre</div>
+        </div>
+        
+        <!-- Botones subir/bajar preset -->
+        <div class="nav-col">
+            <button class="nav-btn" onclick="sendPresetStep(1)">▲</button>
+            <button class="nav-btn" onclick="sendPresetStep(-1)">▼</button>
+        </div>
+
+        <!-- Tuner como botón estilo tarjeta -->
+        <button class="state-card" id="btn-tuner" onclick="sendMIDI(68, 127)" style="cursor:pointer; text-align:left; align-items:flex-start; flex: 1;">
+            <label>Utilidad</label>
+            <div class="value" style="color:var(--yellow)">TUNER</div>
+            <div class="sub" style="color:var(--muted)">Afinador</div>
+        </button>
+    </div>
+
+    <div class="grid" id="button-container"></div>
+
+    <div style="width:100%; max-width:720px; display:flex; justify-content:space-between; align-items:center;">
+        <p class="section-title">Consola MIDI</p>
+        <button id="toggle-editor" onclick="toggleEditor()">Editar Nombres de Presets</button>
+    </div>
+    
+    <div id="log"></div>
+
+    <div class="editor-panel" id="editor-panel">
+        <div class="editor-grid">
+            <div class="editor-group" style="grid-column: 1 / -1; margin-bottom: 10px;">
+                <label>URL de tu VPS (Cloud Sync)</label>
+                <input type="text" id="vps-url-input" placeholder="https://tu-vps.com/helix_api.php" style="width:100%; padding:10px; background:#070910; border:1px solid var(--border); color:var(--blue); border-radius:6px; font-family:'JetBrains Mono';">
+            </div>
+            <div class="editor-group">
+                <label>Presets (ID: Nombre)</label>
+                <textarea id="preset-json-input" placeholder='0: "Limpio Principal",&#10;1: "Solo Lead",&#10;2: "Ambiental Delay"'></textarea>
+            </div>
+            <div class="editor-group">
+                <label>Snapshots (ID: Nombre)</label>
+                <textarea id="snap-json-input" placeholder='0: "Snap 1",&#10;1: "Snap 2"'></textarea>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="action-btn" style="background:var(--blue); color:#fff;" onclick="syncWithCloud()">Sincronizar Nube</button>
+            <button class="action-btn" style="background:var(--accent2); color:#fff;" onclick="saveAllNames()">Guardar Local</button>
+            <button class="action-btn" style="background:var(--surface2); color:#fff;" onclick="toggleEditor()">Cerrar</button>
+        </div>
+        <p style="font-size: 10px; color: var(--muted);">Los nombres se guardan en el celular/navegador.</p>
+    </div>
+
+    <script>
+        let midiOutput = null;
+        let midiInput  = null;
+        
+        // Diccionarios y Config Global
+        let cloudConfig = {
+            presets: { 0: "Preset Inicial" },
+            snapshots: { 1: "SNAP 1", 2: "SNAP 2", 3: "SNAP 3", 4: "SNAP 4", 5: "SNAP 5", 6: "SNAP 6", 7: "SNAP 7", 8: "SNAP 8" },
+            customActions: [] // Espacio para futuros pseudo-snapshots
+        };
+        
+        let presetNames = cloudConfig.presets;
+        let snapshotNames = cloudConfig.snapshots;
+        let vpsUrl = "";
+
+        let currentPresetIdx = 0;
+        let currentSnapshot = 0;
+
+        const config = [
+            // Fila superior: 5-8
+            { name: "SNAP 5", cc: 69, value: 4, color: "#ffffff" },
+            { name: "SNAP 6", cc: 69, value: 5, color: "#ffffff" },
+            { name: "SNAP 7", cc: 69, value: 6, color: "#ffffff" },
+            { name: "SNAP 8", cc: 69, value: 7, color: "#ffffff" },
+            // Fila inferior: 1-4
+            { name: "SNAP 1", cc: 69, value: 0, color: "#ffffff" },
+            { name: "SNAP 2", cc: 69, value: 1, color: "#ffffff" },
+            { name: "SNAP 3", cc: 69, value: 2, color: "#ffffff" },
+            { name: "SNAP 4", cc: 69, value: 3, color: "#ffffff" },
+        ];
+
+        // ── Cloud Persistence ────────────────────────────────
+        async function loadNames() {
+            const savedPresets = localStorage.getItem('helix_preset_names');
+            const savedSnaps   = localStorage.getItem('helix_snap_names');
+            vpsUrl = localStorage.getItem('helix_vps_url') || "";
+            document.getElementById('vps-url-input').value = vpsUrl;
+
+            if (savedPresets) presetNames = JSON.parse(savedPresets);
+            if (savedSnaps)   snapshotNames = JSON.parse(savedSnaps);
+            
+            fillEditorFields();
+
+            // Si hay URL de VPS, intentamos sincronizar automáticamente al inicio
+            if (vpsUrl) {
+                logEntry("sys", "Intentando sincronizar con la nube...");
+                await syncWithCloud(true); 
+            }
+        }
+
+        function fillEditorFields() {
+            document.getElementById('preset-json-input').value = 
+                Object.entries(presetNames).map(([k,v]) => `${k}: "${v}"`).join('\n');
+            document.getElementById('snap-json-input').value = 
+                Object.entries(snapshotNames).map(([k,v]) => `${k}: "${v}"`).join('\n');
+        }
+
+        async function syncWithCloud(isSilent = false) {
+            const url = document.getElementById('vps-url-input').value.trim();
+            if (!url) {
+                if (!isSilent) alert("Por favor, ingresa una URL de VPS válida.");
+                return;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.presets) presetNames = data.presets;
+                if (data.snapshots) snapshotNames = data.snapshots;
+                if (data.customActions) cloudConfig.customActions = data.customActions;
+
+                localStorage.setItem('helix_preset_names', JSON.stringify(presetNames));
+                localStorage.setItem('helix_snap_names', JSON.stringify(snapshotNames));
+                localStorage.setItem('helix_vps_url', url);
+                
+                fillEditorFields();
+                renderButtons();
+                updatePresetDisplay(currentPresetIdx);
+                if (!isSilent) alert("Nube sincronizada con éxito.");
+                logEntry("sys", "Sincronización Cloud exitosa.");
+            } catch (e) {
+                console.error(e);
+                if (!isSilent) alert("Error al conectar con el VPS.");
+            }
+        }
+
+        function parseLines(text) {
+            const obj = {};
+            text.split('\n').forEach(line => {
+                if (!line.includes(':')) return;
+                let [id, ...nameParts] = line.split(':');
+                let name = nameParts.join(':').trim().replace(/^["']|["']$|[,]$/g, "").trim();
+                id = id.trim();
+                if (id !== "" && name !== "") obj[id] = name;
+            });
+            return obj;
+        }
+
+        async function saveAllNames() {
+            const pInput = document.getElementById('preset-json-input').value;
+            const sInput = document.getElementById('snap-json-input').value;
+            const url    = document.getElementById('vps-url-input').value.trim();
+            
+            presetNames = parseLines(pInput);
+            snapshotNames = parseLines(sInput);
+            
+            localStorage.setItem('helix_preset_names', JSON.stringify(presetNames));
+            localStorage.setItem('helix_snap_names', JSON.stringify(snapshotNames));
+            localStorage.setItem('helix_vps_url', url);
+
+            // Si hay URL, intentamos subir los datos a la nube
+            if (url) {
+                try {
+                    await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            presets: presetNames,
+                            snapshots: snapshotNames,
+                            customActions: cloudConfig.customActions
+                        })
+                    });
+                    logEntry("sys", "Datos subidos al VPS correctamente.");
+                } catch (e) { logEntry("sys", "Error al subir datos al VPS."); }
+            }
+            
+            renderButtons();
+            updatePresetDisplay(currentPresetIdx);
+            toggleEditor();
+        }
+
+        function toggleEditor() {
+            const p = document.getElementById('editor-panel');
+            p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // ── MIDI ───────────────────────────────────────────────
+        async function initMIDI() {
+            if (!navigator.requestMIDIAccess) {
+                setStatus("No MIDI Support", false);
+                return;
+            }
+            try {
+                const midiAccess = await navigator.requestMIDIAccess();
+                midiAccess.onstatechange = () => findHelix(midiAccess);
+                findHelix(midiAccess);
+            } catch (err) { setStatus("MIDI Error", false); }
+        }
+
+        function findHelix(midiAccess) {
+            const outputs = Array.from(midiAccess.outputs.values());
+            const inputs  = Array.from(midiAccess.inputs.values());
+            midiOutput = outputs.find(o => o.name.toLowerCase().includes("helix")) || null;
+            const newInput = inputs.find(i => i.name.toLowerCase().includes("helix")) || null;
+
+            if (newInput && newInput !== midiInput) {
+                midiInput = newInput;
+                midiInput.onmidimessage = onMidiMessage;
+            }
+            if (midiOutput) {
+                const isNewConnection = document.getElementById('status-badge').classList.contains('disconnected');
+                setStatus(midiOutput.name, true);
+                renderButtons();
+                
+                // Si es una conexión nueva, forzamos estado inicial para sincronizar
+                if (isNewConnection) {
+                    syncToDefault();
+                }
+            } else {
+                setStatus("Helix Desconectada", false);
+            }
+        }
+
+        function syncToDefault() {
+            if (!midiOutput) return;
+            logEntry("sys", "Sincronizando a estado inicial (01A / Snap 1)...");
+            
+            sendMIDI_PC(0);
+            sendMIDI(69, 0);
+        }
+
+        function sendPresetStep(step) {
+            let next = currentPresetIdx + step;
+            if (next < 0) next = 127;
+            if (next > 127) next = 0;
+            sendMIDI_PC(next);
+        }
+
+        function sendMIDI_PC(id) {
+            if (!midiOutput) return;
+            midiOutput.send([0xC0, id]);
+            // Forzar actualización UI
+            onMidiMessage({ data: [0xC0, id] });
+        }
+
+        function onMidiMessage(event) {
+            const [status, data1, data2] = event.data;
+            const type = status & 0xF0;
+            if (type === 0xB0) handleCC(data1, data2);
+            else if (type === 0xC0) {
+                currentPresetIdx = data1;
+                flash("card-preset");
+                updatePresetDisplay(data1);
+                logEntry("rx", "Preset → " + data1);
+            }
+        }
+
+        function handleCC(cc, value) {
+            if (cc === 69) {
+                currentSnapshot = value;
+                highlightSnapshot(value);
+                logEntry("rx", "Snapshot → " + (value + 1));
+            }
+        }
+
+        function highlightSnapshot(val) {
+            const buttons = document.querySelectorAll('.ctrl-btn');
+            buttons.forEach((btn) => {
+                if (parseInt(btn.dataset.val) === val) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+
+        function formatHelixPreset(id) {
+            const num = parseInt(id);
+            if (isNaN(num)) return "—";
+            const bank = Math.floor(num / 4) + 1;
+            const letter = ['A', 'B', 'C', 'D'][num % 4];
+            return bank.toString().padStart(2, '0') + letter;
+        }
+
+        function updatePresetDisplay(id) {
+            const name = presetNames[id] || "Sin Nombre";
+            setText("val-preset", formatHelixPreset(id));
+            setText("sub-preset", name.toUpperCase());
+        }
+
+        function sendMIDI(cc, value) {
+            if (!midiOutput) return;
+            midiOutput.send([0xB0, cc, value]);
+            logEntry("tx", "CC " + cc + " = " + value);
+        }
+
+        // ── UI Helpers ────────────────────────────────────────
+        function setStatus(msg, connected) {
+            document.getElementById('status-text').textContent = msg;
+            document.getElementById('status-badge').className = connected ? 'connected' : 'disconnected';
+        }
+        function setText(id, val) { document.getElementById(id).textContent = val; }
+        function flash(id) {
+            const el = document.getElementById(id);
+            el.classList.add('flash');
+            setTimeout(() => el.classList.remove('flash'), 800);
+        }
+        function renderButtons() {
+            const container = document.getElementById('button-container');
+            container.innerHTML = '';
+            config.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'ctrl-btn';
+                btn.dataset.val = item.value; 
+                
+                // Usar nombre personalizado si existe, sino el de config
+                const customName = snapshotNames[item.value + 1];
+                btn.textContent = customName || item.name;
+                
+                btn.style.backgroundColor = "transparent";
+                btn.style.borderColor = item.color + '44';
+                btn.style.color = item.color;
+                btn.onclick = () => sendMIDI(item.cc, item.value);
+                container.appendChild(btn);
+            });
+        }
+        function logEntry(type, msg) {
+            const log = document.getElementById('log');
+            const div = document.createElement('div');
+            div.className = 'log-entry ' + type;
+            div.innerHTML = `<span class="ts">${new Date().toLocaleTimeString('es',{hour12:false})}</span>${msg}`;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+            if (log.children.length > 50) log.removeChild(log.firstChild);
+        }
+
+        loadNames();
+        initMIDI();
+    </script>
+</body>
+</html>
