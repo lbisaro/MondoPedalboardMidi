@@ -1,7 +1,7 @@
 {
     "name": "Helix MIDI Control",
     "short_name": "HelixMIDI",
-    "start_url": "index.html",
+    "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#121212",
     "theme_color": "#121212",
@@ -9,7 +9,10 @@
         {
             "src": "helix-icon.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
-    ]
+    ],
+    "id": "com.mondo.helix.midi",
+    "orientation": "portrait"
 }
