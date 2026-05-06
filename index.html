@@ -500,10 +500,13 @@
 </head>
 
 <body>
-    <header>
-        <h1>Helix <span>Live</span></h1>
-        <div id="status-badge" class="disconnected">
-            <span id="status-text">Buscando Helix...</span>
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px;">
+        <h1 style="margin: 0;">Helix <span>Live</span></h1>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div id="status-badge" class="disconnected" style="margin: 0;">
+                <span id="status-text">Buscando Helix...</span>
+            </div>
+            <i class="fa-solid fa-expand" id="btn-fullscreen" onclick="toggleFullscreen()" style="cursor: pointer; opacity: 0.6; font-size: 1.2rem; color: var(--accent2);"></i>
         </div>
     </header>
 
@@ -1498,6 +1501,18 @@
 
 
 
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error al intentar modo pantalla completa: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js')
