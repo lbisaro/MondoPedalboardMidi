@@ -1,4 +1,4 @@
-const CACHE_NAME = 'helix_m_c-v0.1';
+const CACHE_NAME = 'helix_m_c-v0.2';
 const ASSETS = [
     './',
     './index.html',
